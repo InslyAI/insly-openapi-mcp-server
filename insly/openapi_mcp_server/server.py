@@ -201,8 +201,8 @@ def create_mcp_server(config: Config) -> FastMCP:
             # Create prompt manager
             prompt_manager = MCPPromptManager()
 
-            # Generate prompts
-            asyncio.run(prompt_manager.generate_prompts(server, config.api_name, openapi_spec))
+            # Generate prompts with our custom name mappings
+            asyncio.run(prompt_manager.generate_prompts(server, config.api_name, openapi_spec, mcp_names))
 
             # Register resource handler
             prompt_manager.register_api_resource_handler(server, config.api_name, client)

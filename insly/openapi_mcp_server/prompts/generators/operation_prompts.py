@@ -216,11 +216,12 @@ def determine_mime_type(responses: Optional[Dict[str, Any]]) -> str:
 
 def generate_operation_documentation(
     operation_id: str,
-    method: str,
-    path: str,
-    summary: str,
-    description: str,
-    parameters: List[Dict[str, Any]],
+    friendly_name: Optional[str] = None,
+    method: str = '',
+    path: str = '',
+    summary: str = '',
+    description: str = '',
+    parameters: Optional[List[Dict[str, Any]]] = None,
     request_body: Optional[Dict[str, Any]] = None,
     responses: Optional[Dict[str, Any]] = None,
     security: Optional[List[Dict[str, List[str]]]] = None,
@@ -228,8 +229,17 @@ def generate_operation_documentation(
     """Generate documentation for an operation."""
     doc_lines = []
 
-    # Add title (operation ID only)
-    doc_lines.append(f'# {operation_id}')
+    # Add title - use friendly name if available, otherwise use summary
+    if friendly_name:
+        # Convert snake_case to Title Case for documentation
+        title = ' '.join(word.capitalize() for word in friendly_name.split('_'))
+    elif summary:
+        title = summary
+    else:
+        # Fallback to method + path
+        title = f'{method.upper()} {path}'
+    
+    doc_lines.append(f'# {title}')
 
     # Add summary or description (not both, to save tokens)
     if summary:
@@ -445,11 +455,12 @@ def create_operation_prompt(
     server: Any,
     api_name: str,
     operation_id: str,
-    method: str,
-    path: str,
-    summary: str,
-    description: str,
-    parameters: List[Dict[str, Any]],
+    friendly_name: Optional[str] = None,
+    method: str = '',
+    path: str = '',
+    summary: str = '',
+    description: str = '',
+    parameters: Optional[List[Dict[str, Any]]] = None,
     request_body: Optional[Dict[str, Any]] = None,
     responses: Optional[Dict[str, Any]] = None,
     security: Optional[List[Dict[str, List[str]]]] = None,
@@ -461,6 +472,7 @@ def create_operation_prompt(
         server: MCP server instance
         api_name: Name of the API
         operation_id: Operation ID
+        friendly_name: Optional friendly name to use instead of operationId
         method: HTTP method
         path: API path
         summary: Operation summary
@@ -482,6 +494,7 @@ def create_operation_prompt(
         # Generate documentation
         documentation = generate_operation_documentation(
             operation_id=operation_id,
+            friendly_name=friendly_name,
             method=method,
             path=path,
             summary=summary,
@@ -620,10 +633,13 @@ def create_operation_prompt(
                     )
                 )
 
+            # Use friendly name for prompt if available, with _prompt suffix
+            prompt_name = f"{friendly_name}_prompt" if friendly_name else operation_id
+            
             # Create a prompt from the function
             prompt = Prompt.from_function(
                 fn=operation_fn,
-                name=operation_id,
+                name=prompt_name,
                 description=summary or description or f'{method.upper()} {path}',
                 tags=tags,
             )
@@ -634,7 +650,7 @@ def create_operation_prompt(
             # Add the prompt to the server
             server._prompt_manager.add_prompt(prompt)
             logger.debug(
-                f'Added operation prompt: {operation_id} with arguments: {[arg.name for arg in prompt.arguments]}'
+                f'Added operation prompt: {prompt_name} (operationId: {operation_id}) with arguments: {[arg.name for arg in prompt.arguments]}'
             )
             return True
         else:

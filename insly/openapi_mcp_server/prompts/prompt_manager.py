@@ -40,7 +40,8 @@ class MCPPromptManager:
         self.resource_handlers = {}
 
     async def generate_prompts(
-        self, server: Any, api_name: str, openapi_spec: Dict[str, Any]
+        self, server: Any, api_name: str, openapi_spec: Dict[str, Any], 
+        mcp_names: Dict[str, str] = None
     ) -> Dict[str, bool]:
         """Generate MCP-compliant prompts from an OpenAPI specification.
 
@@ -48,6 +49,7 @@ class MCPPromptManager:
             server: MCP server instance
             api_name: Name of the API
             openapi_spec: OpenAPI specification
+            mcp_names: Optional mapping of operationId to friendly names
 
         Returns:
             Status of prompt generation
@@ -73,11 +75,17 @@ class MCPPromptManager:
                 if not operation_id:
                     continue
 
+                # Get friendly name if available
+                friendly_name = None
+                if mcp_names and operation_id in mcp_names:
+                    friendly_name = mcp_names[operation_id]
+
                 # Create and register operation prompt
                 success = create_operation_prompt(
                     server=server,
                     api_name=api_name,
                     operation_id=operation_id,
+                    friendly_name=friendly_name,
                     method=method,
                     path=path,
                     summary=operation.get('summary', ''),

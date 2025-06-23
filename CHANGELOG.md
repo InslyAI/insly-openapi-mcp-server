@@ -11,9 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Intelligent tool naming system that generates meaningful names from OpenAPI metadata
 - Automatic transformation of hash-like operationIds to human-readable tool names
 - Tool name generation from operation summaries, tags, and paths
+- Prompt naming improvements - prompts now use friendly names with '_prompt' suffix
+- Human-readable prompt documentation titles instead of operationIds
 
 ### Fixed
 - Tool discovery issues caused by cryptic operationIds in OpenAPI specifications
+- Prompt discovery issues - prompts now have meaningful names instead of hash IDs
 
 ## [1.0.0] - 2024-12-23
 
