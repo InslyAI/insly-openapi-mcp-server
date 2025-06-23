@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-"""Dynamic authentication client wrapper for per-request Bearer token support."""
+"""Dynamic authentication client wrapper for per-request authentication support."""
 
 import httpx
 from typing import Any, Dict, Optional, Union
@@ -30,11 +30,16 @@ from loguru import logger
 
 
 class DynamicAuthClient(httpx.AsyncClient):
-    """HTTP client wrapper that supports dynamic Bearer token injection.
+    """HTTP client wrapper that supports dynamic authentication header injection.
     
-    This client intercepts requests and looks for a special '_bearer_token' parameter
-    in the request data. If found, it adds the token to the Authorization header
-    and removes it from the request parameters.
+    This client intercepts requests and looks for authentication-related parameters
+    in the request data. If found, it adds them to the appropriate headers
+    and removes them from the request parameters.
+    
+    Supported authentication parameters:
+    - Authorization: For Bearer tokens or Basic auth
+    - X-API-Key (or other custom headers): For API key authentication
+    - _bearer_token: Legacy parameter for backward compatibility
     """
     
     def __init__(self, *args, **kwargs):
@@ -55,36 +60,55 @@ class DynamicAuthClient(httpx.AsyncClient):
         headers: Optional[Dict[str, str]] = None,
         **kwargs
     ) -> httpx.Response:
-        """Override request method to inject dynamic Bearer tokens.
+        """Override request method to inject dynamic authentication headers.
         
-        Looks for '_bearer_token' in json data or params and moves it to headers.
+        Looks for authentication parameters in json/params/data and moves them to headers.
         """
         # Create a copy of headers to avoid modifying the original
         request_headers = dict(headers) if headers else {}
         
-        # Check for Bearer token in JSON data
+        # List of known authentication header names
+        auth_headers = ['Authorization', 'X-API-Key', 'X-Api-Key', 'api-key', 'apikey']
+        
+        # Function to extract auth headers from a dict
+        def extract_auth_headers(data_dict: Dict[str, Any]) -> Dict[str, str]:
+            extracted = {}
+            keys_to_remove = []
+            
+            for key, value in data_dict.items():
+                # Check if this is an authentication header
+                if key in auth_headers or key.lower().endswith('-key') or key.lower().endswith('-token'):
+                    if value:
+                        extracted[key] = str(value)
+                        keys_to_remove.append(key)
+                        logger.debug(f"Extracted auth header {key} for {method} {url}")
+                
+                # Handle legacy _bearer_token parameter
+                elif key == '_bearer_token' and value:
+                    extracted['Authorization'] = f'Bearer {value}'
+                    keys_to_remove.append(key)
+                    logger.debug(f"Extracted legacy _bearer_token for {method} {url}")
+            
+            # Remove extracted keys from the original dict
+            for key in keys_to_remove:
+                data_dict.pop(key)
+            
+            return extracted
+        
+        # Check for auth headers in JSON data
         if json is not None and isinstance(json, dict):
-            if '_bearer_token' in json:
-                token = json.pop('_bearer_token')
-                if token:
-                    request_headers['Authorization'] = f'Bearer {token}'
-                    logger.debug(f"Injected Bearer token from JSON data for {method} {url}")
+            auth_headers_found = extract_auth_headers(json)
+            request_headers.update(auth_headers_found)
         
-        # Check for Bearer token in params
+        # Check for auth headers in params
         if params is not None and isinstance(params, dict):
-            if '_bearer_token' in params:
-                token = params.pop('_bearer_token')
-                if token:
-                    request_headers['Authorization'] = f'Bearer {token}'
-                    logger.debug(f"Injected Bearer token from params for {method} {url}")
+            auth_headers_found = extract_auth_headers(params)
+            request_headers.update(auth_headers_found)
         
-        # Check for Bearer token in form data
+        # Check for auth headers in form data
         if data is not None and isinstance(data, dict):
-            if '_bearer_token' in data:
-                token = data.pop('_bearer_token')
-                if token:
-                    request_headers['Authorization'] = f'Bearer {token}'
-                    logger.debug(f"Injected Bearer token from form data for {method} {url}")
+            auth_headers_found = extract_auth_headers(data)
+            request_headers.update(auth_headers_found)
         
         # Make the request with potentially modified headers
         return await super().request(

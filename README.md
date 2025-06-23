@@ -24,8 +24,9 @@
 
 ### Authentication & Security
 - **Multi-Auth Support**: API Key, Bearer Token, Basic Auth, AWS Cognito, and more
-- **Dynamic Bearer Token Pass-through**: AI can pass different Bearer tokens per request (e.g., from login flows)
-- **Dynamic Header Forwarding**: Pass-through authentication headers from AI to API endpoints
+- **Dynamic Authentication Parameters**: Authentication headers appear as tool parameters for AI to use
+- **Per-Request Authentication**: AI can pass different tokens for each request (e.g., from login flows)
+- **Automatic Header Injection**: Auth parameters are automatically moved to HTTP headers
 - **Secure Credential Management**: Environment variable support for production deployments
 
 ### Performance & Reliability  
@@ -140,7 +141,7 @@ uvx insly-openapi-mcp-server \
   --header "X-API-VERSION: v2"
 ```
 
-### Dynamic Bearer Token Authentication
+### Dynamic Authentication Parameters
 ```bash
 # For APIs where tokens change per session (e.g., login/logout flows)
 # 1. Configure server without static auth:
@@ -148,10 +149,15 @@ uvx insly-openapi-mcp-server \
   --spec https://api.example.com/openapi.json \
   --auth-type none
 
-# 2. AI can pass Bearer tokens dynamically:
-# - Login to get token
-# - Pass token to subsequent calls using _bearer_token parameter
-# - Example: logout(_bearer_token="jwt-from-login")
+# 2. The AI will see authentication as regular tool parameters:
+# - For Bearer auth endpoints: "Authorization" parameter
+# - For API key endpoints: The specific header name (e.g., "X-API-Key")
+# - Example: logout(Authorization="Bearer jwt-token-from-login")
+
+# The server automatically:
+# - Detects which endpoints require authentication from OpenAPI spec
+# - Adds appropriate auth parameters to those tools
+# - Moves auth parameters from the request to HTTP headers
 ```
 
 ### 3. Configuration Options

@@ -79,12 +79,12 @@ def enhance_description_with_headers(
         enhanced_parts.append("\n\n**Authentication Required:**")
         enhanced_parts.append(f"\n{security_info}")
         
-        # Add dynamic Bearer token parameter info if Bearer auth is detected
+        # Add dynamic authentication parameter info
         if 'Bearer token authentication' in security_info:
             enhanced_parts.append("\n\n**Dynamic Authentication Support:**")
-            enhanced_parts.append("\n- To use a Bearer token obtained from login, include the `_bearer_token` parameter in your request")
-            enhanced_parts.append("\n- Example: `_bearer_token: \"your-jwt-token-here\"`")
-            enhanced_parts.append("\n- The token will be automatically added to the Authorization header")
+            enhanced_parts.append("\n- Include the `Authorization` parameter in your request with value: `Bearer <token>`")
+            enhanced_parts.append("\n- Example: `Authorization: \"Bearer your-jwt-token-here\"`")
+            enhanced_parts.append("\n- For backward compatibility, you can also use `_bearer_token: \"your-jwt-token-here\"`")
     
     # Add header parameters
     if header_params:
@@ -246,6 +246,120 @@ def extract_security_requirements(openapi_spec: Dict[str, Any], operation: Dict[
     return None
 
 
+def extract_security_schemes(openapi_spec: Dict[str, Any], operation: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Extract security scheme definitions for an operation.
+    
+    Args:
+        openapi_spec: The complete OpenAPI specification
+        operation: The operation object
+        
+    Returns:
+        List of security scheme definitions
+    """
+    # Check operation-level security first
+    security = operation.get('security')
+    
+    # Fall back to global security if not specified at operation level
+    if security is None and 'security' in openapi_spec:
+        security = openapi_spec['security']
+    
+    if not security:
+        return []
+    
+    # Get security schemes definitions
+    security_schemes = {}
+    if 'components' in openapi_spec and 'securitySchemes' in openapi_spec['components']:
+        security_schemes = openapi_spec['components']['securitySchemes']
+    
+    # Collect relevant security schemes
+    relevant_schemes = []
+    for security_req in security:
+        if not isinstance(security_req, dict):
+            continue
+            
+        for scheme_name, scopes in security_req.items():
+            if scheme_name in security_schemes:
+                scheme = security_schemes[scheme_name].copy()
+                scheme['name'] = scheme_name
+                scheme['scopes'] = scopes
+                relevant_schemes.append(scheme)
+    
+    return relevant_schemes
+
+
+def add_auth_parameters_to_tool_schema(tool: Any, openapi_spec: Dict[str, Any], operation: Dict[str, Any]) -> bool:
+    """Add authentication parameters to a tool's schema based on security requirements.
+    
+    Args:
+        tool: The FastMCP tool object
+        openapi_spec: The OpenAPI specification
+        operation: The operation object from OpenAPI spec
+        
+    Returns:
+        True if the tool schema was modified, False otherwise
+    """
+    # Get security schemes for this operation
+    security_schemes = extract_security_schemes(openapi_spec, operation)
+    
+    if not security_schemes:
+        return False
+    
+    # Get the tool's parameter schema from the parameters attribute
+    if not hasattr(tool, 'parameters'):
+        logger.warning(f"Tool {tool.name} has no parameters attribute")
+        return False
+    
+    schema = tool.parameters
+    if not isinstance(schema, dict):
+        logger.warning(f"Tool {tool.name} parameters is not a dict")
+        return False
+    
+    # Ensure properties exist
+    if 'properties' not in schema:
+        schema['properties'] = {}
+    
+    modified = False
+    
+    # Add parameters based on security schemes
+    for scheme in security_schemes:
+        scheme_type = scheme.get('type', '')
+        
+        if scheme_type == 'http' and scheme.get('scheme') == 'bearer':
+            # Add Authorization parameter for Bearer token
+            if 'Authorization' not in schema['properties']:
+                schema['properties']['Authorization'] = {
+                    'type': 'string',
+                    'description': 'Bearer token authentication. Format: Bearer <token>',
+                }
+                if scheme.get('bearerFormat'):
+                    schema['properties']['Authorization']['description'] += f' (Token format: {scheme["bearerFormat"]})'
+                modified = True
+                logger.debug(f"Added Authorization parameter to tool {tool.name}")
+                
+        elif scheme_type == 'apiKey' and scheme.get('in') == 'header':
+            # Add API key header parameter
+            header_name = scheme.get('name', 'X-API-Key')
+            if header_name not in schema['properties']:
+                schema['properties'][header_name] = {
+                    'type': 'string',
+                    'description': f'API key authentication header',
+                }
+                modified = True
+                logger.debug(f"Added {header_name} parameter to tool {tool.name}")
+                
+        elif scheme_type == 'http' and scheme.get('scheme') == 'basic':
+            # Add Authorization parameter for Basic auth
+            if 'Authorization' not in schema['properties']:
+                schema['properties']['Authorization'] = {
+                    'type': 'string',
+                    'description': 'Basic authentication. Format: Basic <base64(username:password)>',
+                }
+                modified = True
+                logger.debug(f"Added Authorization parameter for Basic auth to tool {tool.name}")
+    
+    return modified
+
+
 def enhance_tool_descriptions(server: Any, openapi_spec: Dict[str, Any]) -> None:
     """Enhance all tool descriptions in the server with header parameter information.
     
@@ -259,6 +373,7 @@ def enhance_tool_descriptions(server: Any, openapi_spec: Dict[str, Any]) -> None
     
     tools = server._tool_manager._tools
     enhanced_count = 0
+    schema_enhanced_count = 0
     
     for tool_name, tool in tools.items():
         # Get the operation ID, path, and method from the tool
@@ -284,6 +399,15 @@ def enhance_tool_descriptions(server: Any, openapi_spec: Dict[str, Any]) -> None
             if hasattr(route, 'method'):
                 method = route.method
         
+        # Find the operation in the OpenAPI spec
+        operation = None
+        if operation_id:
+            operation = find_operation_by_id(openapi_spec, operation_id)
+        
+        # If not found by ID or no ID provided, try by path and method
+        if not operation and path and method:
+            operation = find_operation_by_path_and_method(openapi_spec, path, method)
+        
         # Enhance the description
         original_description = tool.description
         enhanced_description = enhance_description_with_headers(
@@ -298,6 +422,14 @@ def enhance_tool_descriptions(server: Any, openapi_spec: Dict[str, Any]) -> None
             tool.description = enhanced_description
             enhanced_count += 1
             logger.debug(f"Enhanced description for tool '{tool_name}' (path: {path}, method: {method})")
+        
+        # Enhance the tool schema with auth parameters
+        if operation:
+            if add_auth_parameters_to_tool_schema(tool, openapi_spec, operation):
+                schema_enhanced_count += 1
     
     if enhanced_count > 0:
         logger.info(f"Enhanced {enhanced_count} tool descriptions with header parameter information")
+    
+    if schema_enhanced_count > 0:
+        logger.info(f"Enhanced {schema_enhanced_count} tool schemas with authentication parameters")
