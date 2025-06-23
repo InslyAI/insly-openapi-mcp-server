@@ -4,7 +4,7 @@ services:
   openapi-mcp-server:
     build: .
     # Or use pre-built image:
-    # image: insly/openapi-mcp-server:latest
+    # image: inslyAI/openapi-mcp-server:latest
     
     container_name: ${CONTAINER_NAME:-openapi-mcp-server}
     
