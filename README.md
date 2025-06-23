@@ -10,6 +10,7 @@ A production-ready Model Context Protocol (MCP) server that provides seamless in
 
 - **OpenAPI 3.0+ Support**: Full compatibility with OpenAPI 3.0 specifications
 - **Swagger 2.0 Support**: Automatic conversion of Swagger 2.0 specs to OpenAPI 3.0
+- **Intelligent Tool Naming**: Generates meaningful tool names from API metadata instead of cryptic operationIds
 - **Streamable HTTP Transport**: Modern, efficient transport protocol for real-time communication
 - **Multiple Authentication Methods**: Support for API Key, Bearer Token, Basic Auth, and AWS Cognito
 - **Intelligent Caching**: Built-in caching for improved performance
@@ -178,6 +179,23 @@ The server automatically detects and converts Swagger 2.0 specifications:
 ```bash
 uvx insly-openapi-mcp-server --spec https://api.example.com/swagger.json
 ```
+
+### Intelligent Tool Naming
+
+The server automatically generates meaningful tool names from your OpenAPI specification:
+
+- **Prioritizes human-readable summaries**: Converts operation summaries to tool names
+- **Falls back to path and method**: Uses endpoint paths when summaries aren't available  
+- **Handles hash-like operationIds**: Transforms cryptic IDs into descriptive names
+
+Examples of automatic transformations:
+```
+operationId: "2dedbfd907f6ce906291347459087311" → tool name: "get_tenant_features"
+operationId: "e2e54aec2faf75675f89ea0060119273" → tool name: "create_product"
+operationId: "getUserByID" → tool name: "get_user_by_id"
+```
+
+This makes your API tools much more discoverable and intuitive for AI assistants.
 
 ### Custom Base URL
 

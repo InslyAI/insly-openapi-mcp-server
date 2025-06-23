@@ -38,6 +38,7 @@ from insly.openapi_mcp_server.utils.http_client import HttpClientFactory, make_r
 from insly.openapi_mcp_server.utils.metrics_provider import metrics
 from insly.openapi_mcp_server.utils.openapi import load_openapi_spec
 from insly.openapi_mcp_server.utils.openapi_validator import validate_openapi_spec
+from insly.openapi_mcp_server.utils.tool_naming import generate_mcp_names, validate_tool_names
 from fastmcp import FastMCP
 from typing import Any, Dict
 
@@ -173,12 +174,23 @@ def create_mcp_server(config: Config) -> FastMCP:
                 config.api_name = openapi_spec['info']['title']
                 logger.info(f'Updated API name from OpenAPI spec title: {config.api_name}')
 
+        # Generate meaningful tool names from OpenAPI metadata
+        logger.info('Generating tool name mappings from OpenAPI specification')
+        try:
+            mcp_names = generate_mcp_names(openapi_spec)
+            mcp_names = validate_tool_names(mcp_names)
+            logger.info(f'Generated {len(mcp_names)} tool name mappings')
+        except Exception as e:
+            logger.warning(f'Failed to generate tool name mappings: {e}. Using default operationIds.')
+            mcp_names = {}
+
         # Create the FastMCP server using from_openapi
         logger.info('Creating FastMCP server from OpenAPI specification')
         server = FastMCP.from_openapi(
             openapi_spec=openapi_spec,
             client=client,
-            name=config.api_name or 'OpenAPI MCP Server'
+            name=config.api_name or 'OpenAPI MCP Server',
+            mcp_names=mcp_names  # Pass our custom tool name mappings
         )
 
         logger.info(f'Successfully configured API: {config.api_name}')

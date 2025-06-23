@@ -7,7 +7,7 @@ allow-direct-references = true
 
 [project]
 name = "insly-openapi-mcp-server"
-version = "1.0.0"
+version = "1.0.1"
 description = "insly.ai OpenAPI MCP Server - A production-ready Model Context Protocol server for OpenAPI specifications"
 readme = "README.md"
 requires-python = ">=3.10"

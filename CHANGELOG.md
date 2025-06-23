@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2024-12-23
+
+### Added
+- Intelligent tool naming system that generates meaningful names from OpenAPI metadata
+- Automatic transformation of hash-like operationIds to human-readable tool names
+- Tool name generation from operation summaries, tags, and paths
+
+### Fixed
+- Tool discovery issues caused by cryptic operationIds in OpenAPI specifications
+
 ## [1.0.0] - 2024-12-23
 
 ### Added
