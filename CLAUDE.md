@@ -19,13 +19,13 @@ pip install -e ".[test]"
 ### Running the Server Locally
 ```bash
 # Run HTTP server with local changes using uvx (defaults to http://localhost:8000/mcp)
-uvx --refresh --from . awslabs.openapi-mcp-server --api-url https://petstore3.swagger.io/api/v3 --spec-url https://petstore3.swagger.io/api/v3/openapi.json --log-level DEBUG
+uvx --refresh --from . insly-openapi-mcp-server --spec https://petstore3.swagger.io/api/v3/openapi.json --log-level DEBUG
 
 # Run directly with Python module
-python -m awslabs.openapi_mcp_server --api-name petstore --api-url https://petstore3.swagger.io/api/v3 --spec-url https://petstore3.swagger.io/api/v3/openapi.json
+python -m insly.openapi_mcp_server --spec https://petstore3.swagger.io/api/v3/openapi.json
 
 # Custom port and path
-python -m awslabs.openapi_mcp_server --port 3000 --path /api/mcp --api-url https://api.example.com --spec-url https://api.example.com/openapi.json
+python -m insly.openapi_mcp_server --port 3000 --path /api/mcp --spec https://api.example.com/openapi.json
 ```
 
 ### Running Tests
@@ -34,7 +34,7 @@ python -m awslabs.openapi_mcp_server --port 3000 --path /api/mcp --api-url https
 pytest
 
 # Run tests with coverage
-pytest --cov=awslabs
+pytest --cov=insly
 
 # Run specific test modules
 pytest tests/api/
@@ -59,45 +59,42 @@ pyright
 
 # Run pre-commit hooks
 pre-commit run --all-files
-
-# Check for secrets
-detect-secrets scan --baseline .secrets.baseline
 ```
 
 ## High-Level Architecture
 
 ### Core Components
 
-1. **FastMCP Server** (`awslabs/openapi_mcp_server/server.py`)
+1. **FastMCP Server** (`insly/openapi_mcp_server/server.py`)
    - Built on FastMCP framework for Model Context Protocol
-   - Dynamically generates MCP tools from OpenAPI specifications
+   - Uses FastMCP.from_openapi() for automatic tool generation
    - Runs as HTTP server using Streamable HTTP transport
    - Default endpoint: http://localhost:8000/mcp
    - Implements graceful shutdown with configurable timeout
 
 2. **Dynamic Tool Generation**
    - Fetches and validates OpenAPI specifications (JSON/YAML)
-   - Intelligent route mapping: GET operations with query parameters become TOOLS (not RESOURCES)
-   - Creates structured MCP tools with proper argument schemas
-   - Generates operation-specific prompts with token optimization
+   - Automatic Swagger 2.0 to OpenAPI 3.0 conversion
+   - FastMCP handles all tool generation automatically
+   - Supports file upload parameters in Swagger 2.0
 
-3. **Authentication System** (`awslabs/openapi_mcp_server/auth/`)
+3. **Authentication System** (`insly/openapi_mcp_server/auth/`)
    - Factory pattern for authentication providers
    - Supports: Basic, Bearer Token, API Key, AWS Cognito
    - Each auth type has its own module with specific implementation
    - Authentication is applied to all API calls via HTTP client
 
-4. **Prompt Generation** (`awslabs/openapi_mcp_server/prompts/`)
-   - Token-optimized prompt generation (70-75% reduction)
-   - Operation-specific prompts for each API endpoint
-   - API documentation prompts for comprehensive understanding
-   - Follows MCP-compliant structure
+4. **Swagger Converter** (`insly/openapi_mcp_server/utils/swagger_converter.py`)
+   - Automatic detection of Swagger 2.0 specs
+   - Converts to OpenAPI 3.0 format
+   - Handles file upload type conversions
+   - Preserves all functionality during conversion
 
-5. **AWS Best Practices Implementation**
+5. **Production Features**
    - **Caching**: Abstract cache provider with in-memory implementation
    - **Resilience**: HTTP client with retry logic using tenacity
-   - **Observability**: Structured logging with loguru, optional Prometheus metrics
-   - **Health Checks**: Docker health check endpoint support
+   - **Observability**: Structured logging with loguru
+   - **Configuration**: Environment variables and CLI arguments
 
 ### Key Design Patterns
 
@@ -112,18 +109,22 @@ detect-secrets scan --baseline .secrets.baseline
 3. Default values (lowest priority)
 
 ### Server Architecture
-- **HTTP Server**: Uses FastMCP's Streamable HTTP transport (introduced in v2.3.0)
+- **HTTP Server**: Uses FastMCP's Streamable HTTP transport
 - **Default Configuration**: 
   - Host: 0.0.0.0 (for container compatibility)
   - Port: 8000
   - Path: /mcp
-- **Transport**: Streamable HTTP is the only supported transport (stdio removed for simplification)
+- **Transport**: Streamable HTTP only (optimized for production)
 
 ### Testing Strategy
 - Comprehensive test coverage with pytest
 - Async test support with pytest-asyncio
 - Mock external dependencies (HTTP calls, auth providers)
 - Test all authentication types and edge cases
-- Performance testing for prompt generation
+- Swagger 2.0 conversion testing
 
-This architecture enables dynamic API integration with LLMs through the Model Context Protocol, providing a bridge between OpenAPI specifications and AI models with minimal configuration required.
+This architecture enables seamless API integration with AI assistants through the Model Context Protocol, providing a bridge between OpenAPI specifications and AI models with minimal configuration required.
+
+---
+
+Made with ❤️ by [insly.ai](https://insly.ai)

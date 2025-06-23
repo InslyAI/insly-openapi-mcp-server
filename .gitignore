@@ -1,8 +1,12 @@
-Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -16,65 +20,71 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# Virtual environments
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
 .venv
-.venv/
 env/
 venv/
 ENV/
-test-env/
-.test-env/
+env.bak/
+venv.bak/
 
-# IDE
+# IDEs
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
+.DS_Store
 
-# Testing
-.tox/
-.coverage
-.coverage.*
-htmlcov/
-.pytest_cache/
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
-# Ruff
+# Pyre type checker
+.pyre/
+
+# pyright
+.pyright/
+
+# ruff
 .ruff_cache/
 
-# Build
-*.manifest
-*.spec
-.pybuilder/
-target/
-
-# Environments
-.env
+# Local development
+*.log
+.secrets
 .env.local
 .env.*.local
 
-# PyPI
-.pypirc
-
-# Project specific files
-# Functional test logs
-petstore_test_*.log
-server_output.tmp
-server_log.txt
-server_pid.txt
-*.tmp
-test-docker*.sh
-
-# mkdocs
-site/
-.venv/
-
-# Temp files
-*.bak
-*~
-.DS_Store
+# UV
+uv.lock

@@ -1,357 +1,301 @@
-# AWS Labs OpenAPI MCP Server
+# insly.ai OpenAPI MCP Server
 
-This project is a server that dynamically creates Model Context Protocol (MCP) tools and resources from OpenAPI specifications. It allows Large Language Models (LLMs) to interact with APIs through the Model Context Protocol.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![MCP Version](https://img.shields.io/badge/MCP-2024--11--05-green.svg)](https://modelcontextprotocol.io/)
 
-## Features
+A production-ready Model Context Protocol (MCP) server that provides seamless integration with any OpenAPI-compliant API. Built by [insly.ai](https://insly.ai), this server enables AI assistants to interact with your APIs through a standardized protocol.
 
-- **Dynamic Tool Generation**: Automatically creates MCP tools from OpenAPI endpoints
-- **Intelligent Route Mapping**: Maps GET operations with query parameters to TOOLS instead of RESOURCES
-  - Makes API operations with query parameters easier for LLMs to understand and use
-  - Improves usability of search and filtering endpoints
-  - Configurable via the route_patch module
-- **Dynamic Prompt Generation**: Creates helpful prompts based on API structure
-  - **Operation-Specific Prompts**: Generates natural language prompts for each API operation
-  - **API Documentation Prompts**: Creates comprehensive API documentation prompts
-  - **Prompt Optimization**: Implements token efficiency strategies to reduce costs and enhance clarity
-    - Follows MCP-compliant structure with name, description, arguments, and metadata
-    - Achieves 70-75% reduction in token usage while maintaining functionality
-    - Uses concise descriptions with essential information for better developer experience
-- **HTTP Server**: Runs as an HTTP server using Streamable HTTP transport for easy integration
-- **Flexible Configuration**: Configure via environment variables or command line arguments
-- **OpenAPI Support**: Works with OpenAPI 3.x specifications in JSON or YAML format
-- **OpenAPI Specification Validation**: Validates specifications without failing startup if issues detected, logging warnings instead to work with specs having minor issues or non-standard extensions
-- **Authentication Support**: Supports multiple authentication methods (Basic, Bearer Token, API Key, Cognito)
-- **AWS Best Practices**: Implements AWS best practices for caching, resilience, and observability
-- **Comprehensive Testing**: Includes extensive unit and integration tests with high code coverage
-- **Metrics Collection**: Tracks API calls, tool usage, errors, and performance metrics
+## 🚀 Features
 
-## Installation
+- **OpenAPI 3.0+ Support**: Full compatibility with OpenAPI 3.0 specifications
+- **Swagger 2.0 Support**: Automatic conversion of Swagger 2.0 specs to OpenAPI 3.0
+- **Streamable HTTP Transport**: Modern, efficient transport protocol for real-time communication
+- **Multiple Authentication Methods**: Support for API Key, Bearer Token, Basic Auth, and AWS Cognito
+- **Intelligent Caching**: Built-in caching for improved performance
+- **Error Handling**: Robust error handling with detailed logging
+- **Production Ready**: Battle-tested and optimized for production environments
 
-### From PyPI
+## 📋 Requirements
+
+- Python 3.10 or higher
+- FastMCP 2.3.0+
+- Valid OpenAPI specification (URL or local file)
+
+## 🛠️ Installation
+
+### Using pip
 
 ```bash
-pip install "awslabs.openapi-mcp-server"
+pip install insly-openapi-mcp-server
 ```
 
-### Optional Dependencies
-
-The package supports several optional dependencies:
+### Using uvx (Recommended)
 
 ```bash
-# For YAML OpenAPI specification support
-pip install "awslabs.openapi-mcp-server[yaml]"
-
-# For Prometheus metrics support
-pip install "awslabs.openapi-mcp-server[prometheus]"
-
-# For testing
-pip install "awslabs.openapi-mcp-server[test]"
-
-# For all optional dependencies
-pip install "awslabs.openapi-mcp-server[all]"
+uvx insly-openapi-mcp-server --spec https://api.example.com/openapi.json
 ```
 
-### From Source
+### From source
 
 ```bash
-git clone https://github.com/awslabs/mcp.git
-cd mcp/src/openapi-mcp-server
+git clone https://github.com/kivilaid/insly-openapi-mcp-server.git
+cd insly-openapi-mcp-server
 pip install -e .
 ```
 
-### Using MCP Configuration
+## 🚦 Quick Start
 
-First, start the OpenAPI MCP server:
+### 1. Basic Usage
+
+Run the server with an OpenAPI specification URL:
 
 ```bash
-# Start the server (defaults to http://localhost:8000/mcp)
-awslabs.openapi-mcp-server --api-url https://api.example.com --spec-url https://api.example.com/openapi.json
-
-# Or with custom port and path
-awslabs.openapi-mcp-server --port 3000 --path /api/mcp --api-url https://api.example.com --spec-url https://api.example.com/openapi.json
+uvx insly-openapi-mcp-server --spec https://api.example.com/openapi.json
 ```
 
-Then configure your MCP client (e.g. for Amazon Q Developer CLI MCP, `~/.aws/amazonq/mcp.json`):
+Or with a local file:
+
+```bash
+uvx insly-openapi-mcp-server --spec ./openapi.yaml
+```
+
+### 2. With Authentication
+
+#### API Key Authentication
+```bash
+uvx insly-openapi-mcp-server \
+  --spec https://api.example.com/openapi.json \
+  --api-key your-api-key
+```
+
+#### Bearer Token
+```bash
+uvx insly-openapi-mcp-server \
+  --spec https://api.example.com/openapi.json \
+  --bearer-token your-bearer-token
+```
+
+#### Basic Authentication
+```bash
+uvx insly-openapi-mcp-server \
+  --spec https://api.example.com/openapi.json \
+  --username your-username \
+  --password your-password
+```
+
+### 3. Configuration Options
+
+```bash
+uvx insly-openapi-mcp-server \
+  --spec https://api.example.com/openapi.json \
+  --port 8080 \                    # Custom port (default: 8000)
+  --host 0.0.0.0 \                 # Bind address (default: 0.0.0.0)
+  --path /custom-mcp \             # Custom endpoint path (default: /mcp)
+  --base-url https://api.example.com \  # Override base URL
+  --timeout 30                     # Request timeout in seconds
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+You can configure the server using environment variables:
+
+```bash
+# Server configuration
+export SERVER_PORT=8080
+export SERVER_HOST=0.0.0.0
+export SERVER_PATH=/mcp
+
+# API configuration
+export OPENAPI_SPEC_URL=https://api.example.com/openapi.json
+export API_BASE_URL=https://api.example.com
+export API_TIMEOUT=30
+
+# Authentication
+export API_KEY=your-api-key
+export BEARER_TOKEN=your-bearer-token
+export USERNAME=your-username
+export PASSWORD=your-password
+
+# AWS Cognito (if using)
+export COGNITO_CLIENT_ID=your-client-id
+export COGNITO_CLIENT_SECRET=your-client-secret
+export COGNITO_REGION=us-east-1
+```
+
+### Configuration File
+
+Create a `.env` file in your working directory:
+
+```env
+OPENAPI_SPEC_URL=https://api.example.com/openapi.json
+API_KEY=your-api-key
+SERVER_PORT=8080
+API_TIMEOUT=60
+```
+
+## 🔌 MCP Client Integration
+
+### Claude Desktop
+
+Add to your Claude Desktop configuration (`claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
-    "awslabs.openapi-mcp-server": {
-      "url": "http://localhost:8000/mcp",
-      "disabled": false,
-      "autoApprove": []
+    "my-api": {
+      "command": "uvx",
+      "args": [
+        "insly-openapi-mcp-server",
+        "--spec", "https://api.example.com/openapi.json",
+        "--api-key", "your-api-key"
+      ]
     }
   }
 }
 ```
 
-## Usage
+### MCP Inspector
 
-### Basic Usage
-
-```bash
-# Start HTTP server with Petstore API example (defaults to http://localhost:8000/mcp)
-awslabs.openapi-mcp-server --api-name petstore --api-url https://petstore3.swagger.io/api/v3 --spec-url https://petstore3.swagger.io/api/v3/openapi.json
-
-# The server will start and display:
-# Starting HTTP server on http://0.0.0.0:8000/mcp
-```
-
-### Custom API
+Test your server with MCP Inspector:
 
 ```bash
-# Use a different API
-awslabs.openapi-mcp-server --api-name myapi --api-url https://api.example.com --spec-url https://api.example.com/openapi.json
+# Start the server
+uvx insly-openapi-mcp-server --spec https://api.example.com/openapi.json
+
+# In another terminal, run MCP Inspector
+npx @modelcontextprotocol/inspector http://localhost:8000/mcp
 ```
 
-### Authenticated API
+## 📚 Advanced Usage
+
+### Swagger 2.0 Support
+
+The server automatically detects and converts Swagger 2.0 specifications:
 
 ```bash
-# Basic Authentication
-awslabs.openapi-mcp-server --api-url https://api.example.com --spec-url https://api.example.com/openapi.json --auth-type basic --auth-username YOUR_USERNAME --auth-password YOUR_PASSWORD # pragma: allowlist secret
-
-# Bearer Token Authentication
-awslabs.openapi-mcp-server --api-url https://api.example.com --spec-url https://api.example.com/openapi.json --auth-type bearer --auth-token YOUR_TOKEN # pragma: allowlist secret
-
-# API Key Authentication (in header)
-awslabs.openapi-mcp-server --api-url https://api.example.com --spec-url https://api.example.com/openapi.json --auth-type api_key --auth-api-key YOUR_API_KEY --auth-api-key-name X-API-Key --auth-api-key-in header # pragma: allowlist secret
+uvx insly-openapi-mcp-server --spec https://api.example.com/swagger.json
 ```
 
-For detailed information about authentication methods, configuration options, and examples, see [AUTHENTICATION.md](AUTHENTICATION.md).
+### Custom Base URL
 
-### Local OpenAPI Specification
+Override the base URL from the OpenAPI spec:
 
 ```bash
-# Use a local OpenAPI specification file
-awslabs.openapi-mcp-server --spec-path ./openapi.json
+uvx insly-openapi-mcp-server \
+  --spec ./local-openapi.json \
+  --base-url https://production.api.com
 ```
 
-### YAML OpenAPI Specification
+### Multiple Authentication Headers
+
+Combine different authentication methods:
 
 ```bash
-# Use a YAML OpenAPI specification file (requires pyyaml)
-pip install "awslabs.openapi-mcp-server[yaml]"
-awslabs.openapi-mcp-server --spec-path ./openapi.yaml
+uvx insly-openapi-mcp-server \
+  --spec https://api.example.com/openapi.json \
+  --header "X-Custom-Header: value" \
+  --header "X-Another-Header: another-value" \
+  --api-key your-api-key
 ```
 
-### Local Development and Testing
+## 🐳 Docker Support
 
-For local development and testing, you can use the `uvx` command with the `--refresh` and `--from` options:
+### Using Docker
+
+```dockerfile
+FROM python:3.10-slim
+
+WORKDIR /app
+
+RUN pip install insly-openapi-mcp-server
+
+CMD ["insly-openapi-mcp-server", "--spec", "${OPENAPI_SPEC_URL}"]
+```
+
+### Docker Compose
+
+```yaml
+version: '3.8'
+
+services:
+  mcp-server:
+    image: python:3.10-slim
+    command: |
+      bash -c "pip install insly-openapi-mcp-server && 
+               insly-openapi-mcp-server --spec ${OPENAPI_SPEC_URL}"
+    environment:
+      - OPENAPI_SPEC_URL=https://api.example.com/openapi.json
+      - API_KEY=your-api-key
+      - SERVER_PORT=8000
+    ports:
+      - "8000:8000"
+```
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+1. **Connection refused**
+   - Ensure the server is running on the correct port
+   - Check firewall settings
+   - Verify the host binding (use `0.0.0.0` for Docker)
+
+2. **Authentication errors**
+   - Double-check your API credentials
+   - Ensure authentication headers are properly formatted
+   - Check if the API requires additional headers
+
+3. **Invalid OpenAPI spec**
+   - Validate your OpenAPI spec using online validators
+   - Ensure the spec URL is accessible
+   - Check for CORS issues if accessing from a browser
+
+### Debug Mode
+
+Enable detailed logging:
 
 ```bash
-# Run the server from the local directory with the Petstore API
-uvx --refresh --from . awslabs.openapi-mcp-server --api-url https://petstore3.swagger.io/api/v3 --spec-url https://petstore3.swagger.io/api/v3/openapi.json --log-level DEBUG
+uvx insly-openapi-mcp-server \
+  --spec https://api.example.com/openapi.json \
+  --debug
 ```
 
-**Command Options Explained:**
+## 🛡️ Security
 
-- `uvx` - The uv package manager's execution tool for running Python packages
-- `--refresh` - Refreshes the package cache to ensure the latest version is used (important during development)
-- `--from .` - Uses the package from the current directory instead of installing from PyPI
-- `awslabs.openapi-mcp-server` - The package name to run
-- `--api-url` - The base URL of the API
-- `--spec-url` - The URL of the OpenAPI specification
-- `--log-level DEBUG` - Sets the logging level to DEBUG for more detailed logs (useful for development)
-**When to Use These Options:**
+- **API Keys**: Never commit API keys to version control
+- **Environment Variables**: Use environment variables for sensitive data
+- **HTTPS**: Always use HTTPS for production APIs
+- **Rate Limiting**: The server respects API rate limits automatically
 
-- Use `--refresh` when you've made changes to your code and want to ensure the latest version is used
-- Use `--log-level DEBUG` when you need detailed logs for troubleshooting or development
+## 🤝 Contributing
 
-**Note:** The Petstore API is a standard OpenAPI schema endpoint that can be used for simple testing without any API authentication configuration. It's perfect for testing your MCP server implementation without setting up your own API.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-## Configuration
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-### Environment Variables
+## 📝 License
 
-```bash
-# Server configuration
-export SERVER_NAME="My API Server"
-export SERVER_DEBUG=true
-export SERVER_MESSAGE_TIMEOUT=60
-export SERVER_HOST="0.0.0.0"
-export SERVER_PORT=8000
-export SERVER_PATH="/mcp"  # HTTP endpoint path (default: /mcp)
-export LOG_LEVEL="INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-# Metrics and monitoring configuration
-export ENABLE_PROMETHEUS="false"  # Enable/disable Prometheus metrics (default: false)
-export PROMETHEUS_PORT=9090  # Port for Prometheus metrics server
-export ENABLE_OPERATION_PROMPTS="true"  # Enable/disable operation-specific prompts (default: true)
+## 🙏 Acknowledgments
 
-# Graceful shutdown configuration
-export UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN=5.0  # Timeout for graceful shutdown in seconds
-export UVICORN_GRACEFUL_SHUTDOWN=true  # Enable/disable graceful shutdown
+- Built with [FastMCP](https://github.com/jlowin/fastmcp) framework
+- Inspired by the [Model Context Protocol](https://modelcontextprotocol.io/) specification
+- Developed by the team at [insly.ai](https://insly.ai)
 
-# API configuration
-export API_NAME="myapi"
-export API_BASE_URL="https://api.example.com"
-export API_SPEC_URL="https://api.example.com/openapi.json"
-export API_SPEC_PATH="/path/to/local/openapi.json"  # Optional: local file path
+## 📞 Support
 
-# Authentication configuration
-export AUTH_TYPE="none"  # Options: none, basic, bearer, api_key
-export AUTH_USERNAME="PLACEHOLDER_USERNAME"  # For basic authentication # pragma: allowlist secret
-export AUTH_PASSWORD="PLACEHOLDER_PASSWORD"  # For basic authentication # pragma: allowlist secret
-export AUTH_TOKEN="PLACEHOLDER_TOKEN"  # For bearer token authentication # pragma: allowlist secret
-export AUTH_API_KEY="PLACEHOLDER_API_KEY"  # For API key authentication # pragma: allowlist secret
-export AUTH_API_KEY_NAME="X-API-Key"  # Name of the API key (default: api_key)
-export AUTH_API_KEY_IN="header"  # Where to place the API key (options: header, query, cookie)
-```
+- **Issues**: [GitHub Issues](https://github.com/kivilaid/insly-openapi-mcp-server/issues)
+- **Email**: support@insly.ai
+- **Website**: [insly.ai](https://insly.ai)
 
-## Documentation
+---
 
-The OpenAPI MCP Server includes comprehensive documentation to help you get started and make the most of its features:
-
-- [**AUTHENTICATION.md**](AUTHENTICATION.md): Detailed information about authentication methods, configuration options, and troubleshooting
-- [**DEPLOYMENT.md**](DEPLOYMENT.md): Guidelines for deploying the server in various environments, including Docker and AWS
-- [**AWS_BEST_PRACTICES.md**](AWS_BEST_PRACTICES.md): AWS best practices implemented in the server for resilience, caching, and efficiency
-- [**OBSERVABILITY.md**](OBSERVABILITY.md): Information about metrics, logging, and monitoring capabilities
-- [**tests/README.md**](tests/README.md): Overview of the test structure and strategy
-
-## AWS Best Practices
-
-The OpenAPI MCP Server implements AWS best practices for building resilient, observable, and efficient cloud applications. These include:
-
-- **Caching**: Robust caching system with multiple backend options
-- **Resilience**: Patterns to handle transient failures and ensure high availability
-- **Observability**: Comprehensive monitoring, metrics, and logging features
-
-For detailed information about these features, including implementation details and configuration options, see [AWS_BEST_PRACTICES.md](AWS_BEST_PRACTICES.md).
-
-## Docker Deployment
-
-The project includes a Dockerfile for containerized deployment. To build and run:
-
-```bash
-# Build the Docker image
-docker build -t openapi-mcp-server:latest .
-
-# Run with default settings
-docker run -p 8000:8000 openapi-mcp-server:latest
-
-# Run with custom configuration
-docker run -p 8000:8000 \
-  -e API_NAME=myapi \
-  -e API_BASE_URL=https://api.example.com \
-  -e API_SPEC_URL=https://api.example.com/openapi.json \
-  -e SERVER_PATH=/mcp \
-  -e ENABLE_PROMETHEUS=false \
-  -e ENABLE_OPERATION_PROMPTS=true \
-  -e UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN=5.0 \
-  -e UVICORN_GRACEFUL_SHUTDOWN=true \
-  openapi-mcp-server:latest
-```
-
-For detailed information about Docker deployment, AWS service integration, and transport considerations, see the [DEPLOYMENT.md](DEPLOYMENT.md) file.
-
-## Testing
-
-The project includes a comprehensive test suite covering unit tests, integration tests, and API functionality tests.
-
-### Running Tests
-
-```bash
-# Install test dependencies
-pip install "awslabs.openapi-mcp-server[test]"
-
-# Run all tests
-pytest
-
-# Run tests with coverage
-pytest --cov=awslabs
-
-# Run specific test modules
-pytest tests/api/
-pytest tests/utils/
-```
-
-The test suite covers:
-
-1. **API Configuration**: Tests for API configuration handling and validation
-2. **API Discovery**: Tests for API endpoint discovery and tool generation
-3. **Caching**: Tests for the caching system and providers
-4. **HTTP Client**: Tests for the HTTP client with resilience features
-5. **Metrics**: Tests for metrics collection and reporting
-6. **OpenAPI Validation**: Tests for OpenAPI specification validation
-
-For more information about the test structure and strategy, see the [tests/README.md](tests/README.md) file.
-
-## Instructions
-
-This server acts as a bridge between OpenAPI specifications and LLMs, allowing models to have a better understanding of available API capabilities without requiring manual tool definitions. The server creates structured MCP tools that LLMs can use to understand and interact with your API endpoints, parameters, and response formats.
-
-### Key Features
-
-1. **Dynamic Tool Generation**: Automatically creates MCP tools from your API endpoints
-2. **Operation-Specific Prompts**: Generates natural language prompts for each API operation
-3. **API Documentation**: Creates comprehensive documentation prompts for the entire API
-4. **Authentication Support**: Works with Basic Auth, Bearer Token, API Key, and Cognito authentication
-
-### Getting Started
-
-1. Point the server to your API by providing:
-   - API name
-   - API base URL
-   - OpenAPI specification URL or local file path
-2. Set up appropriate authentication if your API requires it
-3. Configure the stdio transport option
-
-### Monitoring and Metrics
-
-The server includes built-in monitoring capabilities:
-- Prometheus metrics (disabled by default)
-- Detailed logging of API calls and tool usage
-- Performance tracking for API operations
-## Testing with Amazon Q
-
-To test the OpenAPI MCP Server with Amazon Q, you need to first start the server and then configure Amazon Q to connect to it:
-
-1. **Start the OpenAPI MCP Server**
-
-   ```bash
-   # Start the server with Petstore API example
-   awslabs.openapi-mcp-server --api-name petstore --api-url https://petstore3.swagger.io/api/v3 --spec-url https://petstore3.swagger.io/api/v3/openapi.json
-   
-   # The server will start on http://localhost:8000/mcp
-   ```
-
-2. **Configure Amazon Q MCP Integration**
-
-   Create or edit the MCP configuration file:
-
-   ```bash
-   mkdir -p ~/.aws/amazonq
-   nano ~/.aws/amazonq/mcp.json
-   ```
-
-   Add the following configuration:
-
-   ```json
-   {
-     "mcpServers": {
-       "awslabs.openapi-mcp-server": {
-         "url": "http://localhost:8000/mcp",
-         "disabled": false,
-         "autoApprove": []
-       }
-     }
-   }
-   ```
-
-3. **Start Amazon Q CLI**
-
-   Launch the Amazon Q CLI:
-
-   ```bash
-   q chat
-   ```
-
-4. **Test the Operation Prompts**
-
-   Once connected, you can test the operation prompts by asking Amazon Q to help you with specific API operations:
-
-   ```
-   I need to find a pet by ID using the Petstore API
-   ```
-
-   Amazon Q should respond with guidance using the natural language prompt.
+Made with ❤️ by [insly.ai](https://insly.ai)
