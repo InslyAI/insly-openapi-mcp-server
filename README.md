@@ -24,6 +24,7 @@
 
 ### Authentication & Security
 - **Multi-Auth Support**: API Key, Bearer Token, Basic Auth, AWS Cognito, and more
+- **Dynamic Bearer Token Pass-through**: AI can pass different Bearer tokens per request (e.g., from login flows)
 - **Dynamic Header Forwarding**: Pass-through authentication headers from AI to API endpoints
 - **Secure Credential Management**: Environment variable support for production deployments
 
@@ -137,6 +138,20 @@ uvx insly-openapi-mcp-server \
   --bearer-token $TOKEN \
   --header "X-TENANT-ID: company-123" \
   --header "X-API-VERSION: v2"
+```
+
+### Dynamic Bearer Token Authentication
+```bash
+# For APIs where tokens change per session (e.g., login/logout flows)
+# 1. Configure server without static auth:
+uvx insly-openapi-mcp-server \
+  --spec https://api.example.com/openapi.json \
+  --auth-type none
+
+# 2. AI can pass Bearer tokens dynamically:
+# - Login to get token
+# - Pass token to subsequent calls using _bearer_token parameter
+# - Example: logout(_bearer_token="jwt-from-login")
 ```
 
 ### 3. Configuration Options

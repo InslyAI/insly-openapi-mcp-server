@@ -161,13 +161,20 @@ def create_mcp_server(config: Config) -> FastMCP:
             logger.info(f'Using {auth_provider.provider_name} authentication')
 
         # Create the HTTP client with authentication and connection pooling
-        client = HttpClientFactory.create_client(
+        # Use DynamicAuthClient to support per-request Bearer tokens
+        from insly.openapi_mcp_server.utils.dynamic_auth_client import create_dynamic_auth_client
+        
+        client = create_dynamic_auth_client(
             base_url=config.api_base_url,
-            headers=auth_headers,
+            default_headers=auth_headers,
             auth=httpx_auth,
             cookies=auth_cookies,
+            # Pass through other client configuration from HttpClientFactory
+            timeout=httpx.Timeout(30.0),
+            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+            follow_redirects=True,
         )
-        logger.info(f'Created HTTP client for API base URL: {config.api_base_url}')
+        logger.info(f'Created DynamicAuthClient for API base URL: {config.api_base_url} (supports per-request Bearer tokens)')
 
         # Update API name from OpenAPI spec title if available
         if openapi_spec and isinstance(openapi_spec, dict) and 'info' in openapi_spec:

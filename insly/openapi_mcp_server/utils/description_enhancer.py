@@ -78,6 +78,13 @@ def enhance_description_with_headers(
     if security_info:
         enhanced_parts.append("\n\n**Authentication Required:**")
         enhanced_parts.append(f"\n{security_info}")
+        
+        # Add dynamic Bearer token parameter info if Bearer auth is detected
+        if 'Bearer token authentication' in security_info:
+            enhanced_parts.append("\n\n**Dynamic Authentication Support:**")
+            enhanced_parts.append("\n- To use a Bearer token obtained from login, include the `_bearer_token` parameter in your request")
+            enhanced_parts.append("\n- Example: `_bearer_token: \"your-jwt-token-here\"`")
+            enhanced_parts.append("\n- The token will be automatically added to the Authorization header")
     
     # Add header parameters
     if header_params:
