@@ -39,6 +39,7 @@ from insly.openapi_mcp_server.utils.metrics_provider import metrics
 from insly.openapi_mcp_server.utils.openapi import load_openapi_spec
 from insly.openapi_mcp_server.utils.openapi_validator import validate_openapi_spec
 from insly.openapi_mcp_server.utils.tool_naming import generate_mcp_names, validate_tool_names
+from insly.openapi_mcp_server.utils.description_enhancer import enhance_tool_descriptions
 from fastmcp import FastMCP
 from typing import Any, Dict
 
@@ -194,6 +195,15 @@ def create_mcp_server(config: Config) -> FastMCP:
         )
 
         logger.info(f'Successfully configured API: {config.api_name}')
+
+        # Enhance tool descriptions with header parameter information
+        try:
+            logger.info('Enhancing tool descriptions with header parameter information')
+            enhance_tool_descriptions(server, openapi_spec)
+        except Exception as e:
+            logger.warning(f'Failed to enhance tool descriptions: {e}')
+            import traceback
+            logger.warning(f'Traceback: {traceback.format_exc()}')
 
         # Generate MCP-compliant prompts
         try:
