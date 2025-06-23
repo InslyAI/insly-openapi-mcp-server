@@ -32,10 +32,16 @@ ENV/
 # Git
 .git/
 .gitignore
+.github/
 
-# Documentation
+# Documentation (keep README.md for setup.py)
 docs/
-*.md
+CHANGELOG.md
+CONTRIBUTING.md
+QUICKSTART.md
+DOCKER.md
+CLAUDE.md
+DOCKER_TEST_RESULTS.md
 
 # Tests
 tests/
@@ -46,6 +52,11 @@ test_*.py
 Dockerfile
 .dockerignore
 docker-compose*.yml
+
+# Environment files
+.env
+.env.*
+!.env.example
 
 # Logs
 *.log
@@ -59,3 +70,8 @@ Thumbs.db
 *.tmp
 *.temp
 /tmp/
+
+# Development files
+start.sh
+pyrightconfig.json
+uv.lock

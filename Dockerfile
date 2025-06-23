@@ -1,8 +1,7 @@
-# Multi-stage build for smaller final image
+# Build stage
 FROM python:3.11-slim as builder
 
-# Set working directory
-WORKDIR /app
+WORKDIR /build
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -10,58 +9,45 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install dependencies
-COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+# Copy project files
+COPY pyproject.toml README.md ./
+COPY insly ./insly
 
-# Copy application code
-COPY . .
+# Create a virtual environment and install dependencies
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install .
 
-# Install the package
-RUN pip install --user --no-cache-dir -e .
-
-# Final stage
+# Runtime stage
 FROM python:3.11-slim
 
-# Install runtime dependencies only
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* && \
+    useradd -m -u 1000 mcp
 
-# Create non-root user
-RUN useradd -m -u 1000 mcp
-
-# Set working directory
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /root/.local /home/mcp/.local
+# Copy the virtual environment from builder
+COPY --from=builder --chown=mcp:mcp /opt/venv /opt/venv
 
 # Copy application code
-COPY --chown=mcp:mcp . .
+COPY --chown=mcp:mcp insly ./insly
 
-# Switch to non-root user
+# Set up environment
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
 USER mcp
 
-# Add user's local bin to PATH
-ENV PATH=/home/mcp/.local/bin:$PATH
-
-# Default environment variables
-ENV PYTHONUNBUFFERED=1 \
-    API_NAME="OpenAPI MCP Server" \
-    AUTH_TYPE="none" \
-    SERVER_HOST="0.0.0.0" \
-    SERVER_PORT="8000" \
-    SERVER_PATH="/mcp" \
-    SERVER_DEBUG="false" \
-    SERVER_MESSAGE_TIMEOUT="300"
-
-# Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${SERVER_PORT}${SERVER_PATH}/health || exit 1
+# Simple health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD python -c "import insly.openapi_mcp_server; print('OK')" || exit 1
 
-# Run the server
+# Run the application
 CMD ["python", "-m", "insly.openapi_mcp_server.server"]
