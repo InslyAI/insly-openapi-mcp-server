@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  openapi-mcp-server:
+    build: .
+    # Or use pre-built image:
+    # image: insly/openapi-mcp-server:latest
+    
+    container_name: ${CONTAINER_NAME:-openapi-mcp-server}
+    
+    ports:
+      - "${SERVER_PORT:-8000}:${SERVER_PORT:-8000}"
+    
+    environment:
+      # API Configuration
+      API_SPEC_URL: ${API_SPEC_URL}
+      API_BASE_URL: ${API_BASE_URL}
+      API_NAME: ${API_NAME:-}
+      
+      # Authentication
+      AUTH_TYPE: ${AUTH_TYPE:-none}
+      AUTH_TOKEN: ${AUTH_TOKEN:-}
+      AUTH_USERNAME: ${AUTH_USERNAME:-}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-}
+      AUTH_API_KEY: ${AUTH_API_KEY:-}
+      AUTH_API_KEY_NAME: ${AUTH_API_KEY_NAME:-}
+      AUTH_API_KEY_IN: ${AUTH_API_KEY_IN:-}
+      AUTH_COGNITO_CLIENT_ID: ${AUTH_COGNITO_CLIENT_ID:-}
+      AUTH_COGNITO_USERNAME: ${AUTH_COGNITO_USERNAME:-}
+      AUTH_COGNITO_PASSWORD: ${AUTH_COGNITO_PASSWORD:-}
+      AUTH_COGNITO_USER_POOL_ID: ${AUTH_COGNITO_USER_POOL_ID:-}
+      AUTH_COGNITO_REGION: ${AUTH_COGNITO_REGION:-}
+      
+      # Server Configuration
+      SERVER_HOST: ${SERVER_HOST:-0.0.0.0}
+      SERVER_PORT: ${SERVER_PORT:-8000}
+      SERVER_PATH: ${SERVER_PATH:-/mcp}
+      SERVER_DEBUG: ${SERVER_DEBUG:-false}
+      SERVER_MESSAGE_TIMEOUT: ${SERVER_MESSAGE_TIMEOUT:-60}
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${SERVER_PORT:-8000}${SERVER_PATH:-/mcp}/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    # Mount local specs directory if using local files
+    # Uncomment the following lines if using API_SPEC_PATH instead of API_SPEC_URL
+    # volumes:
+    #   - ./specs:/app/specs:ro
+    
+    # Logging
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Networks (optional - uncomment if needed)
+# networks:
+#   default:
+#     name: ${COMPOSE_PROJECT_NAME:-openapi-mcp}_network
