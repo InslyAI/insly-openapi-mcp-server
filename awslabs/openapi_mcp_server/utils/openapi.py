@@ -20,6 +20,7 @@ import time
 from awslabs.openapi_mcp_server import logger
 from awslabs.openapi_mcp_server.utils.cache_provider import cached
 from awslabs.openapi_mcp_server.utils.openapi_validator import validate_openapi_spec
+from awslabs.openapi_mcp_server.utils.swagger_converter import convert_swagger_to_openapi, is_swagger_2_spec
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -124,6 +125,11 @@ def load_openapi_spec(url: str = '', path: str = '') -> Dict[str, Any]:
                     # Basic parsing without reference resolution
                     spec = response.json()
 
+                # Convert Swagger 2.0 to OpenAPI 3.0 if needed
+                if is_swagger_2_spec(spec):
+                    logger.info('Detected Swagger 2.0 specification, converting to OpenAPI 3.0')
+                    spec = convert_swagger_to_openapi(spec)
+                
                 # Validate the spec
                 if validate_openapi_spec(spec):
                     return spec
@@ -206,6 +212,11 @@ def load_openapi_spec(url: str = '', path: str = '') -> Dict[str, Any]:
                             logger.error(f'Failed to parse YAML: {yaml_err}')
                             raise ValueError(f'Invalid YAML: {yaml_err}') from yaml_err
 
+            # Convert Swagger 2.0 to OpenAPI 3.0 if needed
+            if is_swagger_2_spec(spec):
+                logger.info('Detected Swagger 2.0 specification, converting to OpenAPI 3.0')
+                spec = convert_swagger_to_openapi(spec)
+            
             # Validate the spec
             if validate_openapi_spec(spec):
                 return spec

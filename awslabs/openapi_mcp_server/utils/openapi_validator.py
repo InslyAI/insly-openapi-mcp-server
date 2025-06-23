@@ -51,8 +51,8 @@ def validate_openapi_spec(spec: Dict[str, Any]) -> bool:
     """
     # Basic validation first
     # Check for required fields
-    if 'openapi' not in spec:
-        logger.error("Missing 'openapi' field in OpenAPI spec")
+    if 'openapi' not in spec and 'swagger' not in spec:
+        logger.error("Missing 'openapi' or 'swagger' field in specification")
         return False
 
     if 'info' not in spec:
@@ -63,10 +63,17 @@ def validate_openapi_spec(spec: Dict[str, Any]) -> bool:
         logger.error("Missing 'paths' field in OpenAPI spec")
         return False
 
-    # Check OpenAPI version
-    version = spec['openapi']
-    if not version.startswith('3.'):
-        logger.warning(f'OpenAPI version {version} may not be fully supported')
+    # Check version
+    if 'openapi' in spec:
+        version = spec['openapi']
+        if not version.startswith('3.'):
+            logger.warning(f'OpenAPI version {version} may not be fully supported')
+    elif 'swagger' in spec:
+        version = spec['swagger']
+        if version == '2.0':
+            logger.info('Swagger 2.0 specification detected')
+        else:
+            logger.warning(f'Swagger version {version} may not be fully supported')
 
     # Use openapi-core for additional validation if available
     if USE_OPENAPI_CORE and openapi_core is not None:
