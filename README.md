@@ -20,6 +20,7 @@
 - **OpenAPI 3.0+ & Swagger 2.0**: Full support with automatic Swagger-to-OpenAPI conversion
 - **Intelligent Tool Naming**: Transforms cryptic operationIds into meaningful, discoverable tool names
 - **Smart Prompt Generation**: Auto-generates context-aware prompts for optimal AI interaction
+- **Dual Transport Support**: Runs both modern streamable-http (port 8000) and SSE (port 8001) for maximum client compatibility
 - **Streamable HTTP Transport**: Real-time, bidirectional communication for responsive AI experiences
 
 ### Authentication & Security
@@ -381,6 +382,40 @@ uvx insly-openapi-mcp-server \
 - **Environment Variables**: Use environment variables for sensitive data
 - **HTTPS**: Always use HTTPS for production APIs
 - **Rate Limiting**: The server respects API rate limits automatically
+
+## 🌐 Transport Support
+
+The server automatically runs on two ports to support different MCP clients:
+
+- **Port 8000**: Modern streamable-http transport (recommended)
+- **Port 8001**: SSE transport for legacy client compatibility
+
+Both transports run automatically by default. Clients connect to the appropriate port based on their transport capabilities.
+
+### Configuring Transports
+
+```bash
+# Run with custom ports
+uvx insly-openapi-mcp-server \
+  --spec https://api.example.com/openapi.json \
+  --port 3000 \        # Streamable-http port
+  --sse-port 3001      # SSE port
+
+# Disable SSE transport (streamable-http only)
+uvx insly-openapi-mcp-server \
+  --spec https://api.example.com/openapi.json \
+  --disable-sse
+```
+
+### Docker Support
+
+Both ports are exposed in the Docker image:
+
+```bash
+docker run -p 8000:8000 -p 8001:8001 \
+  -e API_SPEC_URL="https://api.example.com/openapi.json" \
+  insly/openapi-mcp-server:latest
+```
 
 ## 🚀 Performance & Benchmarks
 

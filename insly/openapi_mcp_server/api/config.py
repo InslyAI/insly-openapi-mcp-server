@@ -56,6 +56,8 @@ class Config:
 
     # Server configuration
     port: int = 8000
+    sse_port: int = 8001  # Port for SSE transport
+    enable_sse: bool = True  # Enable SSE transport for legacy clients
     # Default to 0.0.0.0 for container compatibility; use SERVER_HOST env var to override
     host: str = '0.0.0.0'
     path: str = '/mcp'  # HTTP endpoint path
@@ -105,6 +107,8 @@ def load_config(args: Any = None) -> Config:
         'AUTH_COGNITO_REGION': (lambda v: setattr(config, 'auth_cognito_region', v)),
         # Server configuration
         'SERVER_PORT': (lambda v: setattr(config, 'port', int(v))),
+        'SSE_PORT': (lambda v: setattr(config, 'sse_port', int(v))),
+        'ENABLE_SSE': (lambda v: setattr(config, 'enable_sse', v.lower() in ['true', '1', 'yes'])),
         'SERVER_HOST': (lambda v: setattr(config, 'host', v)),
         'SERVER_PATH': (lambda v: setattr(config, 'path', v)),
         'SERVER_DEBUG': (lambda v: setattr(config, 'debug', v.lower() == 'true')),
@@ -145,6 +149,17 @@ def load_config(args: Any = None) -> Config:
         if hasattr(args, 'port') and args.port:
             logger.debug(f'Setting port from arguments: {args.port}')
             config.port = args.port
+
+        if hasattr(args, 'sse_port') and args.sse_port:
+            logger.debug(f'Setting SSE port from arguments: {args.sse_port}')
+            config.sse_port = args.sse_port
+
+        if hasattr(args, 'enable_sse') and args.enable_sse:
+            logger.debug('Enabling SSE from arguments')
+            config.enable_sse = True
+        elif hasattr(args, 'disable_sse') and args.disable_sse:
+            logger.debug('Disabling SSE from arguments')
+            config.enable_sse = False
 
         if hasattr(args, 'path') and args.path:
             logger.debug(f'Setting path from arguments: {args.path}')

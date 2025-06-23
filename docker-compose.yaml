@@ -10,6 +10,7 @@ services:
     
     ports:
       - "${SERVER_PORT:-8000}:${SERVER_PORT:-8000}"
+      - "${SSE_PORT:-8001}:${SSE_PORT:-8001}"
     
     environment:
       # API Configuration
@@ -34,6 +35,8 @@ services:
       # Server Configuration
       SERVER_HOST: ${SERVER_HOST:-0.0.0.0}
       SERVER_PORT: ${SERVER_PORT:-8000}
+      SSE_PORT: ${SSE_PORT:-8001}
+      ENABLE_SSE: ${ENABLE_SSE:-true}
       SERVER_PATH: ${SERVER_PATH:-/mcp}
       SERVER_DEBUG: ${SERVER_DEBUG:-false}
       SERVER_MESSAGE_TIMEOUT: ${SERVER_MESSAGE_TIMEOUT:-60}

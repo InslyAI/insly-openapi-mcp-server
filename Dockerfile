@@ -43,7 +43,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
 
 USER mcp
 
-EXPOSE 8000
+EXPOSE 8000 8001
 
 # Simple health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \

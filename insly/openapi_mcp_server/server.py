@@ -385,6 +385,9 @@ def main():
     )
     # Server configuration
     parser.add_argument('--port', type=int, help='Port to run the server on')
+    parser.add_argument('--sse-port', type=int, help='Port for SSE transport (default: 8001)')
+    parser.add_argument('--enable-sse', action='store_true', default=None, help='Enable SSE transport for legacy clients')
+    parser.add_argument('--disable-sse', action='store_true', help='Disable SSE transport')
     parser.add_argument('--path', type=str, help='HTTP endpoint path (default: /mcp)')
     parser.add_argument(
         '--log-level',
@@ -494,14 +497,20 @@ def main():
         logger.error(f'Traceback: {traceback.format_exc()}')
         sys.exit(1)
 
-    # Run server with streamable-http transport
-    logger.info(f'Starting HTTP server on http://{config.host}:{config.port}{config.path}')
-    mcp_server.run(
-        transport="streamable-http",
-        host=config.host,
-        port=config.port,
-        path=config.path
-    )
+    # Run server with appropriate transport configuration
+    if config.enable_sse:
+        # Use multi-transport runner for dual transport support
+        from insly.openapi_mcp_server.multi_transport import run_dual_transport
+        run_dual_transport(config)
+    else:
+        # Run single streamable-http transport
+        logger.info(f'Starting HTTP server on http://{config.host}:{config.port}{config.path}')
+        mcp_server.run(
+            transport="streamable-http",
+            host=config.host,
+            port=config.port,
+            path=config.path
+        )
 
 if __name__ == '__main__':
     main()
