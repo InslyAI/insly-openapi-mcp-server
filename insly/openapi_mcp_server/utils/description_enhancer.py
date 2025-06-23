@@ -29,7 +29,9 @@ from insly.openapi_mcp_server import logger
 def enhance_description_with_headers(
     base_description: str,
     openapi_spec: Dict[str, Any],
-    operation_id: str
+    operation_id: str,
+    path: Optional[str] = None,
+    method: Optional[str] = None
 ) -> str:
     """Enhance a tool description with header parameter information.
     
@@ -37,12 +39,21 @@ def enhance_description_with_headers(
         base_description: The original tool description
         openapi_spec: The complete OpenAPI specification
         operation_id: The operation ID to find header parameters for
+        path: The path of the operation (used when operation_id is None)
+        method: The HTTP method of the operation (used when operation_id is None)
         
     Returns:
         Enhanced description with header parameter documentation
     """
     # Find the operation in the OpenAPI spec
-    operation = find_operation_by_id(openapi_spec, operation_id)
+    operation = None
+    if operation_id:
+        operation = find_operation_by_id(openapi_spec, operation_id)
+    
+    # If not found by ID or no ID provided, try by path and method
+    if not operation and path and method:
+        operation = find_operation_by_path_and_method(openapi_spec, path, method)
+    
     if not operation:
         return base_description
     
@@ -113,6 +124,53 @@ def find_operation_by_id(openapi_spec: Dict[str, Any], operation_id: str) -> Opt
                 operation = path_item[method]
                 if isinstance(operation, dict) and operation.get('operationId') == operation_id:
                     return operation
+    
+    return None
+
+
+def find_operation_by_path_and_method(openapi_spec: Dict[str, Any], path: str, method: str) -> Optional[Dict[str, Any]]:
+    """Find an operation in the OpenAPI spec by its path and method.
+    
+    Args:
+        openapi_spec: The OpenAPI specification
+        path: The path of the operation (e.g., "/logout")
+        method: The HTTP method (e.g., "GET")
+        
+    Returns:
+        The operation object if found, None otherwise
+    """
+    if 'paths' not in openapi_spec:
+        return None
+    
+    # Normalize method to lowercase
+    method_lower = method.lower()
+    
+    # Try exact path match first
+    if path in openapi_spec['paths']:
+        path_item = openapi_spec['paths'][path]
+        if isinstance(path_item, dict) and method_lower in path_item:
+            return path_item[method_lower]
+    
+    # If not found, try with path parameters replaced
+    # Sometimes the spec has {param} but the route has the actual pattern
+    for spec_path, path_item in openapi_spec['paths'].items():
+        if not isinstance(path_item, dict):
+            continue
+            
+        # Simple pattern matching for path parameters
+        # Convert {param} to a regex pattern
+        pattern = spec_path
+        if '{' in pattern:
+            import re
+            # Replace {param} with a regex that matches anything except /
+            pattern = re.escape(pattern)
+            pattern = pattern.replace(r'\{', '{').replace(r'\}', '}')
+            pattern = re.sub(r'{[^}]+}', r'[^/]+', pattern)
+            pattern = f"^{pattern}$"
+            
+            if re.match(pattern, path):
+                if method_lower in path_item:
+                    return path_item[method_lower]
     
     return None
 
@@ -196,28 +254,43 @@ def enhance_tool_descriptions(server: Any, openapi_spec: Dict[str, Any]) -> None
     enhanced_count = 0
     
     for tool_name, tool in tools.items():
-        # Get the operation ID from the tool
-        # This depends on how FastMCP stores the operation ID
+        # Get the operation ID, path, and method from the tool
         operation_id = None
+        path = None
+        method = None
         
-        # Try to get operation_id from tool's route if available
-        if hasattr(tool, '_route') and hasattr(tool._route, 'operation_id'):
-            operation_id = tool._route.operation_id
-        elif hasattr(tool, 'route') and hasattr(tool.route, 'operation_id'):
-            operation_id = tool.route.operation_id
+        # Try to get route information from tool
+        route = None
+        if hasattr(tool, '_route'):
+            route = tool._route
+        elif hasattr(tool, 'route'):
+            route = tool.route
         
-        if operation_id:
-            original_description = tool.description
-            enhanced_description = enhance_description_with_headers(
-                original_description,
-                openapi_spec,
-                operation_id
-            )
+        if route:
+            # Get operation_id if available
+            if hasattr(route, 'operation_id'):
+                operation_id = route.operation_id
             
-            if enhanced_description != original_description:
-                tool.description = enhanced_description
-                enhanced_count += 1
-                logger.debug(f"Enhanced description for tool '{tool_name}'")
+            # Get path and method
+            if hasattr(route, 'path'):
+                path = route.path
+            if hasattr(route, 'method'):
+                method = route.method
+        
+        # Enhance the description
+        original_description = tool.description
+        enhanced_description = enhance_description_with_headers(
+            original_description,
+            openapi_spec,
+            operation_id,
+            path,
+            method
+        )
+        
+        if enhanced_description != original_description:
+            tool.description = enhanced_description
+            enhanced_count += 1
+            logger.debug(f"Enhanced description for tool '{tool_name}' (path: {path}, method: {method})")
     
     if enhanced_count > 0:
         logger.info(f"Enhanced {enhanced_count} tool descriptions with header parameter information")

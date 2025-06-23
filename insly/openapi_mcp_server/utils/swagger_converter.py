@@ -148,6 +148,18 @@ def convert_security_definitions(security_defs: Dict[str, Any]) -> Dict[str, Any
         if scheme.get('type') == 'basic':
             scheme['type'] = 'http'
             scheme['scheme'] = 'basic'
+        elif scheme.get('type') == 'apiKey' and name.lower() in ['bearer', 'bearertoken', 'bearer_token']:
+            # Special case: Bearer tokens are often defined as apiKey in Swagger 2.0
+            # but should be http/bearer in OpenAPI 3.0
+            if scheme.get('name') == 'Authorization' and scheme.get('in') == 'header':
+                scheme['type'] = 'http'
+                scheme['scheme'] = 'bearer'
+                # Try to extract bearer format from description
+                if 'description' in scheme and 'JWT' in scheme['description'].upper():
+                    scheme['bearerFormat'] = 'JWT'
+                # Remove apiKey specific fields
+                scheme.pop('name', None)
+                scheme.pop('in', None)
         elif scheme.get('type') == 'oauth2':
             # OAuth2 has significant structural changes
             flows = {}
@@ -331,6 +343,9 @@ def convert_operation(operation: Dict[str, Any]) -> Dict[str, Any]:
     # Remove consumes and produces (now handled in content)
     converted.pop('consumes', None)
     converted.pop('produces', None)
+    
+    # Note: Security, operationId, tags, summary, description, etc. are preserved
+    # as they have the same format in OpenAPI 3.0
     
     return converted
 
