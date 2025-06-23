@@ -18,11 +18,14 @@ pip install -e ".[test]"
 
 ### Running the Server Locally
 ```bash
-# Run with local changes using uvx
+# Run HTTP server with local changes using uvx (defaults to http://localhost:8000/mcp)
 uvx --refresh --from . awslabs.openapi-mcp-server --api-url https://petstore3.swagger.io/api/v3 --spec-url https://petstore3.swagger.io/api/v3/openapi.json --log-level DEBUG
 
 # Run directly with Python module
 python -m awslabs.openapi_mcp_server --api-name petstore --api-url https://petstore3.swagger.io/api/v3 --spec-url https://petstore3.swagger.io/api/v3/openapi.json
+
+# Custom port and path
+python -m awslabs.openapi_mcp_server --port 3000 --path /api/mcp --api-url https://api.example.com --spec-url https://api.example.com/openapi.json
 ```
 
 ### Running Tests
@@ -68,7 +71,8 @@ detect-secrets scan --baseline .secrets.baseline
 1. **FastMCP Server** (`awslabs/openapi_mcp_server/server.py`)
    - Built on FastMCP framework for Model Context Protocol
    - Dynamically generates MCP tools from OpenAPI specifications
-   - Handles both stdio transport
+   - Runs as HTTP server using Streamable HTTP transport
+   - Default endpoint: http://localhost:8000/mcp
    - Implements graceful shutdown with configurable timeout
 
 2. **Dynamic Tool Generation**
@@ -107,10 +111,13 @@ detect-secrets scan --baseline .secrets.baseline
 2. Command-line arguments
 3. Default values (lowest priority)
 
-### Critical Import Patterns
-When working with MCP SDK imports:
-- ✅ Use: `import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'`
-- ❌ Avoid: `'@modelcontextprotocol/sdk/types.js'` (causes build failures)
+### Server Architecture
+- **HTTP Server**: Uses FastMCP's Streamable HTTP transport (introduced in v2.3.0)
+- **Default Configuration**: 
+  - Host: 0.0.0.0 (for container compatibility)
+  - Port: 8000
+  - Path: /mcp
+- **Transport**: Streamable HTTP is the only supported transport (stdio removed for simplification)
 
 ### Testing Strategy
 - Comprehensive test coverage with pytest

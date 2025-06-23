@@ -16,7 +16,7 @@ This project is a server that dynamically creates Model Context Protocol (MCP) t
     - Follows MCP-compliant structure with name, description, arguments, and metadata
     - Achieves 70-75% reduction in token usage while maintaining functionality
     - Uses concise descriptions with essential information for better developer experience
-- **Transport Options**: Supports stdio transport
+- **HTTP Server**: Runs as an HTTP server using Streamable HTTP transport for easy integration
 - **Flexible Configuration**: Configure via environment variables or command line arguments
 - **OpenAPI Support**: Works with OpenAPI 3.x specifications in JSON or YAML format
 - **OpenAPI Specification Validation**: Validates specifications without failing startup if issues detected, logging warnings instead to work with specs having minor issues or non-standard extensions
@@ -61,24 +61,23 @@ pip install -e .
 
 ### Using MCP Configuration
 
-Here are some ways you can work with MCP across AWS (e.g. for Amazon Q Developer CLI MCP, `~/.aws/amazonq/mcp.json`):
+First, start the OpenAPI MCP server:
+
+```bash
+# Start the server (defaults to http://localhost:8000/mcp)
+awslabs.openapi-mcp-server --api-url https://api.example.com --spec-url https://api.example.com/openapi.json
+
+# Or with custom port and path
+awslabs.openapi-mcp-server --port 3000 --path /api/mcp --api-url https://api.example.com --spec-url https://api.example.com/openapi.json
+```
+
+Then configure your MCP client (e.g. for Amazon Q Developer CLI MCP, `~/.aws/amazonq/mcp.json`):
 
 ```json
 {
   "mcpServers": {
     "awslabs.openapi-mcp-server": {
-      "command": "uvx",
-      "args": ["awslabs.openapi-mcp-server@latest"],
-      "env": {
-        "API_NAME": "your-api-name",
-        "API_BASE_URL": "https://api.example.com",
-          "API_SPEC_URL": "https://api.example.com/openapi.json",
-          "LOG_LEVEL": "ERROR",
-          "ENABLE_PROMETHEUS": "false",
-          "ENABLE_OPERATION_PROMPTS": "true",
-          "UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN": "5.0",
-          "UVICORN_GRACEFUL_SHUTDOWN": "true"
-      },
+      "url": "http://localhost:8000/mcp",
       "disabled": false,
       "autoApprove": []
     }
@@ -91,8 +90,11 @@ Here are some ways you can work with MCP across AWS (e.g. for Amazon Q Developer
 ### Basic Usage
 
 ```bash
-# Start with Petstore API example
+# Start HTTP server with Petstore API example (defaults to http://localhost:8000/mcp)
 awslabs.openapi-mcp-server --api-name petstore --api-url https://petstore3.swagger.io/api/v3 --spec-url https://petstore3.swagger.io/api/v3/openapi.json
+
+# The server will start and display:
+# Starting HTTP server on http://0.0.0.0:8000/mcp
 ```
 
 ### Custom API
@@ -168,7 +170,7 @@ export SERVER_DEBUG=true
 export SERVER_MESSAGE_TIMEOUT=60
 export SERVER_HOST="0.0.0.0"
 export SERVER_PORT=8000
-export SERVER_TRANSPORT="stdio"  # Option: stdio
+export SERVER_PATH="/mcp"  # HTTP endpoint path (default: /mcp)
 export LOG_LEVEL="INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
 
 # Metrics and monitoring configuration
@@ -232,7 +234,7 @@ docker run -p 8000:8000 \
   -e API_NAME=myapi \
   -e API_BASE_URL=https://api.example.com \
   -e API_SPEC_URL=https://api.example.com/openapi.json \
-  -e SERVER_TRANSPORT=stdio \
+  -e SERVER_PATH=/mcp \
   -e ENABLE_PROMETHEUS=false \
   -e ENABLE_OPERATION_PROMPTS=true \
   -e UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN=5.0 \
@@ -302,9 +304,18 @@ The server includes built-in monitoring capabilities:
 - Performance tracking for API operations
 ## Testing with Amazon Q
 
-To test the OpenAPI MCP Server with Amazon Q, you need to configure Amazon Q to use your MCP server. Here's how:
+To test the OpenAPI MCP Server with Amazon Q, you need to first start the server and then configure Amazon Q to connect to it:
 
-1. **Configure Amazon Q MCP Integration**
+1. **Start the OpenAPI MCP Server**
+
+   ```bash
+   # Start the server with Petstore API example
+   awslabs.openapi-mcp-server --api-name petstore --api-url https://petstore3.swagger.io/api/v3 --spec-url https://petstore3.swagger.io/api/v3/openapi.json
+   
+   # The server will start on http://localhost:8000/mcp
+   ```
+
+2. **Configure Amazon Q MCP Integration**
 
    Create or edit the MCP configuration file:
 
@@ -319,20 +330,7 @@ To test the OpenAPI MCP Server with Amazon Q, you need to configure Amazon Q to 
    {
      "mcpServers": {
        "awslabs.openapi-mcp-server": {
-         "command": "python",
-         "args": ["-m", "awslabs.openapi_mcp_server"],
-         "cwd": "/path/to/your/openapi-mcp-server",
-         "env": {
-           "API_NAME": "petstore",
-           "API_BASE_URL": "https://petstore3.swagger.io/api/v3",
-           "API_SPEC_URL": "https://petstore3.swagger.io/api/v3/openapi.json",
-           "LOG_LEVEL": "INFO",
-           "ENABLE_PROMETHEUS": "false",
-           "ENABLE_OPERATION_PROMPTS": "true",
-           "UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN": "5.0",
-           "UVICORN_GRACEFUL_SHUTDOWN": "true",
-           "PYTHONPATH": "/path/to/your/openapi-mcp-server"
-         },
+         "url": "http://localhost:8000/mcp",
          "disabled": false,
          "autoApprove": []
        }
@@ -340,7 +338,7 @@ To test the OpenAPI MCP Server with Amazon Q, you need to configure Amazon Q to 
    }
    ```
 
-2. **Start Amazon Q CLI**
+3. **Start Amazon Q CLI**
 
    Launch the Amazon Q CLI:
 
@@ -348,7 +346,7 @@ To test the OpenAPI MCP Server with Amazon Q, you need to configure Amazon Q to 
    q chat
    ```
 
-3. **Test the Operation Prompts**
+4. **Test the Operation Prompts**
 
    Once connected, you can test the operation prompts by asking Amazon Q to help you with specific API operations:
 

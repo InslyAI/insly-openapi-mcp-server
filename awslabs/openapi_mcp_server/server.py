@@ -29,7 +29,6 @@ from awslabs.openapi_mcp_server.utils.metrics_provider import metrics
 from awslabs.openapi_mcp_server.utils.openapi import load_openapi_spec
 from awslabs.openapi_mcp_server.utils.openapi_validator import validate_openapi_spec
 from fastmcp import FastMCP
-from fastmcp.server.openapi import FastMCPOpenAPI, RouteMap, RouteType
 from typing import Any, Dict
 
 
@@ -52,17 +51,6 @@ def create_mcp_server(config: Config) -> FastMCP:
         logger.debug('HTTPX version: unknown')
 
     logger.info('Creating FastMCP server')
-
-    # Create the FastMCP server
-    server = FastMCP(
-        'awslabs.openapi-mcp-server',
-        instructions='This server acts as a bridge between OpenAPI specifications and LLMs, allowing models to have a better understanding of available API capabilities without requiring manual tool definitions.',
-        dependencies=[
-            'pydantic',
-            'loguru',
-            'httpx',
-        ],
-    )
 
     try:
         # Load OpenAPI spec
@@ -170,52 +158,19 @@ def create_mcp_server(config: Config) -> FastMCP:
         )
         logger.info(f'Created HTTP client for API base URL: {config.api_base_url}')
 
-        custom_mappings = []
-
-        # Identify GET operations with query parameters in the OpenAPI spec
-        for path, path_item in openapi_spec.get('paths', {}).items():
-            for method, operation in path_item.items():
-                if method.lower() == 'get':
-                    parameters = operation.get('parameters', [])
-                    query_params = [p for p in parameters if p.get('in') == 'query']
-                    if query_params:
-                        # Create a specific mapping for this path to ensure it's treated as a TOOL
-                        custom_mappings.append(
-                            RouteMap(
-                                methods=['GET'],
-                                pattern=f'^{re.escape(path)}$',
-                                route_type=RouteType.TOOL,
-                            )
-                        )
-
-        # Create the FastMCP server with custom route mappings
-        logger.info('Creating FastMCP server with OpenAPI specification')
         # Update API name from OpenAPI spec title if available
         if openapi_spec and isinstance(openapi_spec, dict) and 'info' in openapi_spec:
             if 'title' in openapi_spec['info'] and openapi_spec['info']['title']:
                 config.api_name = openapi_spec['info']['title']
                 logger.info(f'Updated API name from OpenAPI spec title: {config.api_name}')
-        server = FastMCPOpenAPI(
+
+        # Create the FastMCP server using from_openapi
+        logger.info('Creating FastMCP server from OpenAPI specification')
+        server = FastMCP.from_openapi(
             openapi_spec=openapi_spec,
             client=client,
-            name=config.api_name or 'OpenAPI MCP Server',
-            route_maps=custom_mappings,  # Custom mappings take precedence over default mappings
+            name=config.api_name or 'OpenAPI MCP Server'
         )
-
-        # Log route information at debug level
-        if logger.level == 'DEBUG':
-            # Use getattr with default value to safely access attributes
-            openapi_router = getattr(server, '_openapi_router', None)
-            if openapi_router is not None:
-                routes = getattr(openapi_router, '_routes', [])
-                logger.debug(f'Server has {len(routes)} routes')
-
-                # Log details of each route
-                for i, route in enumerate(routes):
-                    path = getattr(route, 'path', 'unknown')
-                    method = getattr(route, 'method', 'unknown')
-                    route_type = getattr(route, 'route_type', 'unknown')
-                    logger.debug(f'Route {i}: {method} {path} - Type: {route_type}')
 
         logger.info(f'Successfully configured API: {config.api_name}')
 
@@ -394,6 +349,7 @@ def main():
     )
     # Server configuration
     parser.add_argument('--port', type=int, help='Port to run the server on')
+    parser.add_argument('--path', type=str, help='HTTP endpoint path (default: /mcp)')
     parser.add_argument(
         '--log-level',
         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
@@ -450,7 +406,7 @@ def main():
     # Load configuration
     logger.debug('Loading configuration from arguments and environment')
     config = load_config(args)
-    logger.debug(f'Configuration loaded: api_name={config.api_name}, transport={config.transport}')
+    logger.debug(f'Configuration loaded: api_name={config.api_name}, host={config.host}, port={config.port}, path={config.path}')
 
     # Create and run the MCP server
     logger.info('Creating MCP server')
@@ -502,9 +458,14 @@ def main():
         logger.error(f'Traceback: {traceback.format_exc()}')
         sys.exit(1)
 
-    # Run server with stdio transport only
-    logger.info('Running server with stdio transport')
-    mcp_server.run()
+    # Run server with streamable-http transport
+    logger.info(f'Starting HTTP server on http://{config.host}:{config.port}{config.path}')
+    mcp_server.run(
+        transport="streamable-http",
+        host=config.host,
+        port=config.port,
+        path=config.path
+    )
 
 
 if __name__ == '__main__':

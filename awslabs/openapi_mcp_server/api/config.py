@@ -47,10 +47,10 @@ class Config:
 
     # Server configuration
     port: int = 8000
-    # Default to localhost for security; use SERVER_HOST env var to override when needed (e.g. in Docker)
-    host: str = '127.0.0.1'
+    # Default to 0.0.0.0 for container compatibility; use SERVER_HOST env var to override
+    host: str = '0.0.0.0'
+    path: str = '/mcp'  # HTTP endpoint path
     debug: bool = False
-    transport: str = 'stdio'  # stdio only
     message_timeout: int = 60
     version: str = '0.1.0'
 
@@ -98,8 +98,8 @@ def load_config(args: Any = None) -> Config:
         # Server configuration
         'SERVER_PORT': (lambda v: setattr(config, 'port', int(v))),
         'SERVER_HOST': (lambda v: setattr(config, 'host', v)),
+        'SERVER_PATH': (lambda v: setattr(config, 'path', v)),
         'SERVER_DEBUG': (lambda v: setattr(config, 'debug', v.lower() == 'true')),
-        'SERVER_TRANSPORT': (lambda v: setattr(config, 'transport', v)),
         'SERVER_MESSAGE_TIMEOUT': (lambda v: setattr(config, 'message_timeout', int(v))),
     }
 
@@ -137,6 +137,10 @@ def load_config(args: Any = None) -> Config:
         if hasattr(args, 'port') and args.port:
             logger.debug(f'Setting port from arguments: {args.port}')
             config.port = args.port
+
+        if hasattr(args, 'path') and args.path:
+            logger.debug(f'Setting path from arguments: {args.path}')
+            config.path = args.path
 
         if hasattr(args, 'debug') and args.debug:
             logger.debug('Setting debug mode from arguments')
@@ -194,7 +198,7 @@ def load_config(args: Any = None) -> Config:
 
     # Log final configuration details
     logger.info(
-        f'Configuration loaded: API name={config.api_name}, transport={config.transport}, port={config.port}'
+        f'Configuration loaded: API name={config.api_name}, host={config.host}, port={config.port}, path={config.path}'
     )
 
     return config
